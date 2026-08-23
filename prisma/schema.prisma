@@ -1,0 +1,391 @@
+// Prisma Schema for AutoApply AI (Career Operating System)
+// Supports multi-tenant isolation, structured candidate profiles, job postings,
+// match analytics, tailored resumes, application state machines, audit logs, and notifications.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  plan        String       @default("pro") // free, pro, enterprise
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  users       User[]
+  jobPostings JobPosting[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id               String            @id @default(uuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email            String            @unique
+  name             String
+  role             String            @default("CANDIDATE") // CANDIDATE, ADMIN
+  passwordHash     String?
+  avatarUrl        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  profile          CandidateProfile?
+  applications     Application[]
+  resumes          TailoredResume[]
+  notifications    Notification[]
+  jobMatches       JobMatch[]
+  auditLogs        AuditLog[]
+
+  @@index([tenantId])
+}
+
+model CandidateProfile {
+  id                 String          @id @default(uuid())
+  userId             String          @unique
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personal Info
+  headline           String?
+  phone              String?
+  location           String?
+  website            String?
+  linkedinUrl        String?
+  githubUrl          String?
+  portfolioUrl       String?
+  summary            String?
+  
+  // Preferences & Hard Constraints
+  desiredTitles      String?         // Comma or JSON array
+  preferredLocations String?         // Comma or JSON array
+  remotePreference   String          @default("REMOTE_OR_HYBRID") // REMOTE, HYBRID, ONSITE, ANY
+  minSalary          Int?            // Annual INR
+  requiresVisa       Boolean         @default(false)
+  workAuthorization  String?         // US Citizen, Green Card, OPT/CPT, H1B
+  yearsOfExperience  Float           @default(0)
+  
+  // Structured Profile Items
+  experiences        Experience[]
+  educations         Education[]
+  projects           Project[]
+  skills             CandidateSkill[]
+  achievements       Achievement[]
+  certifications     Certification[]
+  
+  rawResumeText      String?
+  extractedAt        DateTime?
+  updatedAt          DateTime        @updatedAt
+}
+
+model Experience {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  company            String
+  role               String
+  location           String?
+  startDate          String
+  endDate            String?          // null means present
+  isCurrent          Boolean          @default(false)
+  description        String?
+  bullets            String           // JSON stringified array of achievements/bullet points
+  technologies       String?          // JSON array or comma separated
+  createdAt          DateTime         @default(now())
+
+  @@index([candidateProfileId])
+}
+
+model Education {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  institution        String
+  degree             String
+  fieldOfStudy       String?
+  startDate          String?
+  endDate            String?
+  gradeGpa           String?
+  highlights         String?          // JSON array or comma separated
+  createdAt          DateTime         @default(now())
+
+  @@index([candidateProfileId])
+}
+
+model Project {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  title              String
+  description        String
+  role               String?
+  link               String?
+  technologies       String           // JSON array or comma separated
+  bullets            String           // JSON stringified array
+  createdAt          DateTime         @default(now())
+
+  @@index([candidateProfileId])
+}
+
+model CandidateSkill {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  name               String
+  category           String           @default("TECHNICAL") // TECHNICAL, FRAMEWORK, TOOL, SOFT
+  years              Float?
+  level              String           @default("INTERMEDIATE") // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+
+  @@index([candidateProfileId])
+}
+
+model Achievement {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  title              String
+  issuer             String?
+  date               String?
+  description        String?
+
+  @@index([candidateProfileId])
+}
+
+model Certification {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  
+  name               String
+  issuer             String
+  issueDate          String?
+  expiryDate         String?
+  credentialUrl      String?
+
+  @@index([candidateProfileId])
+}
+
+model JobSourceConfig {
+  id          String   @id @default(uuid())
+  name        String   // "Greenhouse", "Lever", "Ashby", "Workable"
+  adapterType String   // "GREENHOUSE", "LEVER", "ASHBY", "WORKABLE"
+  companySlug String   // e.g. "stripe", "openai", "figma"
+  feedUrl     String
+  isActive    Boolean  @default(true)
+  lastSyncedAt DateTime?
+  syncIntervalMin Int  @default(30)
+  createdAt   DateTime @default(now())
+}
+
+model JobPosting {
+  id                 String        @id @default(uuid())
+  tenantId           String
+  tenant             Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  sourcePlatform     String        // GREENHOUSE, LEVER, ASHBY, WORKABLE, DIRECT
+  sourceJobId        String        // external ID
+  sourceUrl          String
+  canonicalUrl       String
+  fingerprint        String        @unique // SHA256(company + title + location + sourceJobId)
+  
+  company            String
+  companyLogo        String?
+  title              String
+  department         String?
+  location           String
+  isRemote           Boolean       @default(false)
+  employmentType     String        @default("FULL_TIME") // FULL_TIME, INTERNSHIP, CONTRACT
+  
+  salaryMin          Int?
+  salaryMax          Int?
+  salaryCurrency     String        @default("INR")
+  
+  descriptionRaw     String
+  descriptionHtml    String?
+  
+  // Parsed Requirements
+  extractedSkills    String?       // JSON array
+  experienceLevel    String?       // INTERN, ENTRY, MID, SENIOR, LEAD
+  visaAllowed        Boolean?
+  structuredCriteria String?       // JSON of parsed JD parameters
+  
+  postedAt           DateTime
+  updatedAt          DateTime
+  lastSyncedAt       DateTime      @default(now())
+  
+  matches            JobMatch[]
+  applications       Application[]
+
+  @@index([tenantId])
+  @@index([company])
+  @@index([title])
+  @@index([postedAt])
+}
+
+model JobMatch {
+  id                 String      @id @default(uuid())
+  userId             String
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPostingId       String
+  jobPosting         JobPosting  @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  
+  overallScore       Int         // 0 - 100
+  hardFilterPassed   Boolean     @default(true)
+  hardFilterReason   String?
+  
+  // Match breakdown
+  skillsScore        Int         @default(0)
+  experienceScore    Int         @default(0)
+  domainScore        Int         @default(0)
+  
+  matchedSkills      String      // JSON array
+  missingSkills      String      // JSON array
+  
+  whyMatchReason     String
+  potentialConcerns  String?
+  suggestedAngle     String?
+  
+  isStarred          Boolean     @default(false)
+  isDismissed        Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([userId, jobPostingId])
+  @@index([userId])
+  @@index([overallScore])
+}
+
+model TailoredResume {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  jobPostingId       String?
+  title              String        // e.g. "Full Stack Engineer - Figma"
+  targetRole         String
+  targetCompany      String
+  
+  // Resume Structured Sections
+  summary            String
+  skillsSection      String        // JSON array / grouped
+  experienceSection  String        // JSON array of customized bullets
+  projectsSection    String        // JSON array of highlighted projects
+  educationSection   String        // JSON array
+  
+  // Anti-hallucination verification
+  isVerifiedTruthful Boolean       @default(true)
+  verificationLog    String?       // JSON audit of matched facts
+  
+  pdfUrl             String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  applications       Application[]
+
+  @@index([userId])
+}
+
+model Application {
+  id                 String           @id @default(uuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  jobPostingId       String
+  jobPosting         JobPosting       @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  
+  tailoredResumeId   String?
+  tailoredResume     TailoredResume?  @relation(fields: [tailoredResumeId], references: [id], onDelete: SetNull)
+  
+  // State Machine
+  // DISCOVERED -> MATCHED -> SELECTED -> RESUME_READY -> APPLICATION_READY -> WAITING_FOR_APPROVAL -> SUBMITTED -> TRACKING
+  status             String           @default("MATCHED")
+  
+  // Execution details
+  automationEngine   String           @default("PLAYWRIGHT") // PLAYWRIGHT, API, MANUAL
+  formUrl            String?
+  
+  // Sensitive and pre-filled fields
+  fields             ApplicationField[]
+  
+  hasSensitiveQuestions Boolean       @default(false)
+  requiresHumanInput    Boolean       @default(false)
+  humanReviewNotes      String?
+  approvedAt            DateTime?
+  submittedAt           DateTime?
+  externalConfirmation  String?
+  
+  screenshotSnapshot    String?       // URL / Base64 image snapshot of the ATS form before submission
+  
+  // Tracking
+  stage              String           @default("SUBMITTED") // SUBMITTED, SCREENING, INTERVIEW, OFFER, REJECTED
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([userId, jobPostingId])
+  @@index([userId])
+  @@index([status])
+}
+
+model ApplicationField {
+  id                 String      @id @default(uuid())
+  applicationId      String
+  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  fieldKey           String      // e.g. "first_name", "salary_expectation", "visa_sponsorship"
+  fieldLabel         String
+  fieldType          String      // text, select, radio, file, textarea
+  fieldValue         String?
+  
+  isSensitive        Boolean     @default(false)
+  isFilledByAI       Boolean     @default(false)
+  requiresUserReview Boolean     @default(false)
+  confidenceScore    Float       @default(1.0)
+  validationError    String?
+
+  @@index([applicationId])
+}
+
+model Notification {
+  id                 String      @id @default(uuid())
+  userId             String
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type               String      // JOB_DISCOVERED, RESUME_READY, APPROVAL_REQUIRED, APPLICATION_SUBMITTED, SYSTEM
+  title              String
+  message            String
+  actionUrl          String?
+  isRead             Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id                 String      @id @default(uuid())
+  tenantId           String
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId             String?
+  user               User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action             String      // e.g. "USER_LOGIN", "RESUME_GENERATED", "APPLICATION_APPROVED", "SUBMISSION_ATTEMPTED"
+  resourceType       String      // e.g. "Application", "JobPosting", "Profile"
+  resourceId         String?
+  details            String?     // JSON metadata
+  ipAddress          String?
+  createdAt          DateTime    @default(now())
+
+  @@index([tenantId])
+  @@index([action])
+}
