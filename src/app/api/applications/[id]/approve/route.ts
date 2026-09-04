@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker';
+import { getCurrentUserId } from '@/lib/auth';
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = 'user_alex_chen';
+    const userId = await getCurrentUserId(request);
     const appId = params.id;
 
     const result = await ATSPlaywrightWorker.submitApplication(appId, userId);

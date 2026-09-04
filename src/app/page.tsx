@@ -19,7 +19,10 @@ import {
   Bot
 } from 'lucide-react';
 
+import { useAuth } from '@/components/auth/AuthContext';
+
 export default function DashboardPage() {
+  const { user, openLoginModal } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,10 +84,21 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Autonomous Agent Dashboard</span>
             <span className="text-slate-600">•</span>
-            <span className="text-xs text-slate-400">Real-Time Ingestion Active</span>
+            {user ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+                OAuth Verified ({user.provider ? user.provider.toUpperCase() : 'Active'})
+              </span>
+            ) : (
+              <button
+                onClick={openLoginModal}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-medium transition-colors"
+              >
+                Sign In with OAuth &rarr;
+              </button>
+            )}
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Welcome back, Alex
+            Welcome back, {user ? user.name.split(' ')[0] : 'Alex'}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Your career agent is continuously scanning Greenhouse, Lever, Ashby, and Workable feeds for relevant roles.

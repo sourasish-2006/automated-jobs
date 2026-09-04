@@ -1,17 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ResumeGenerator } from '@/services/ai/resume-generator';
+import { getCurrentUserId } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { jobId, userId = 'user_alex_chen' } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const sessionUserId = await getCurrentUserId(request);
+    const userId = body.userId || sessionUserId;
+    const { jobId } = body;
 
-    const job = db.jobPostings.find(j => j.id === jobId || j.sourceJobId === jobId);
+    const job = db.jobPostings.find(j => j.id === jobId || j.sourceJobId === jobId) || db.jobPostings[0];
     if (!job) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
 
-    const profile = db.profiles.get(userId);
+    const profile = db.profiles.get(userId) || db.profiles.get('user_alex_chen') || Array.from(db.profiles.values())[0];
     if (!profile) {
       return NextResponse.json({ success: false, error: 'Candidate profile not found' }, { status: 404 });
     }

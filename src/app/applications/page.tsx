@@ -111,7 +111,7 @@ export default function ApplicationsPipelinePage() {
           <div className="glass-panel p-12 rounded-2xl text-center space-y-3">
             <FileCheck2 className="w-10 h-10 text-slate-500 mx-auto" />
             <h3 className="text-base font-semibold text-white">No active applications in the pipeline</h3>
-            <p className="text-xs text-slate-400">Discover matching jobs and click "Tailor & Apply" to begin.</p>
+            <p className="text-xs text-slate-400">Discover matching jobs and click &quot;Tailor &amp; Apply&quot; to begin.</p>
           </div>
         ) : (
           <div className="space-y-3">
