@@ -1,29 +1,47 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { CandidateProfileData } from '@/types';
 import { FormPrefillEngine } from '@/services/automation/form-prefill';
+import { getCurrentUserId, getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
-  const userId = 'user_alex_chen';
-  const profile = db.profiles.get(userId);
+export async function GET(request: NextRequest) {
+  const userId = await getCurrentUserId(request);
+  let profile = db.profiles.get(userId);
 
   if (!profile) {
-    return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 });
+    // If authenticated user doesn't have a profile yet, initialize one
+    const user = await getSessionUser(request);
+    const baseProfile = db.profiles.get('user_alex_chen');
+
+    if (baseProfile) {
+      profile = {
+        ...baseProfile,
+        id: `prof_${userId}`,
+        userId,
+        fullName: user?.name || baseProfile.fullName,
+        email: user?.email || baseProfile.email
+      };
+      db.profiles.set(userId, profile);
+    } else {
+      return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 });
+    }
   }
 
   return NextResponse.json({
     success: true,
-    profile
+    profile,
+    userId
   });
 }
 
-export async function PUT(request: Request) {
-  const userId = 'user_alex_chen';
+export async function PUT(request: NextRequest) {
+  const userId = await getCurrentUserId(request);
   try {
     const updatedProfile: CandidateProfileData = await request.json();
+    updatedProfile.userId = userId;
     db.profiles.set(userId, updatedProfile);
 
     // Keep application form fields in sync with updated profile
@@ -38,7 +56,7 @@ export async function PUT(request: Request) {
       userId,
       action: 'PROFILE_UPDATED',
       resourceType: 'CandidateProfile',
-      resourceId: profileId(userId),
+      resourceId: `prof_${userId}`,
       createdAt: new Date().toISOString()
     });
 
@@ -49,8 +67,4 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 400 });
   }
-}
-
-function profileId(userId: string) {
-  return `prof_${userId}`;
 }

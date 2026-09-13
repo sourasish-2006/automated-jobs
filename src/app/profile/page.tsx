@@ -24,11 +24,14 @@ import {
   FileText,
   Building2,
   Check,
-  Edit3
+  Edit3,
+  KeyRound
 } from 'lucide-react';
 import { CandidateProfileData } from '@/types';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function CandidateProfilePage() {
+  const { user, openLoginModal } = useAuth();
   const [profile, setProfile] = useState<CandidateProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -256,6 +259,38 @@ export default function CandidateProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Connected OAuth Identity Status */}
+      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <KeyRound className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white">OAuth Authentication Identity:</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${
+                user ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {user ? `${user.provider ? user.provider.toUpperCase() : 'OAUTH'} CONNECTED` : 'LOCAL DEV PROFILE'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              {user ? `Authenticated as ${user.name} (${user.email})` : 'Sign in with Google or GitHub OAuth to sync with your external identity.'}
+            </p>
+          </div>
+        </div>
+
+        {!user && (
+          <button
+            onClick={openLoginModal}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all self-start sm:self-auto"
+          >
+            <span>Connect OAuth Account</span>
+            <span>&rarr;</span>
+          </button>
+        )}
+      </div>
 
       {/* TOP SECTION: Automatic Resume Ingestion Dropzone */}
       <div

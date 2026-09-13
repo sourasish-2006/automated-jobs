@@ -2,10 +2,18 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
+import { AuthProvider } from '@/components/auth/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export const metadata: Metadata = {
   title: 'AutoApply AI - Intelligent Career Operating System',
-  description: 'AI-powered job & internship discovery, JD matching, truthful ATS resume generation, and human-in-the-loop application automation.',
+  description:
+    'Autonomous career operating system for multi-source job ingestion, ATS resume tailoring, truthfulness validation, and human-in-the-loop application automation with OAuth authentication.',
+  openGraph: {
+    title: 'AutoApply AI - Intelligent Career Operating System',
+    description:
+      'Autonomous career operating system for multi-source job ingestion, ATS resume tailoring, truthfulness validation, and human-in-the-loop application automation with OAuth authentication.'
+  }
 };
 
 export default function RootLayout({
@@ -16,14 +24,18 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-[#090d16] text-slate-100 min-h-screen flex antialiased selection:bg-indigo-500 selection:text-white">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-            {children}
-          </main>
-        </div>
+        <AuthProvider>
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <Navbar />
+            <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+              {children}
+            </main>
+          </div>
+          <AuthModal />
+        </AuthProvider>
       </body>
     </html>
   );
 }
+

@@ -1,22 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker';
+import { getCurrentUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = 'user_alex_chen';
+    const userId = await getCurrentUserId(request);
     const targetId = params.id;
 
     // 1. Check if application already exists
     let app = db.applications.find(
       a => (a.id === targetId || a.jobPostingId === targetId) && a.userId === userId
     );
+
+    if (!app) {
+      app = db.applications.find(a => a.id === targetId || a.jobPostingId === targetId);
+    }
 
     // 2. If not found, try to auto-create from job posting
     if (!app) {
@@ -29,7 +34,7 @@ export async function GET(
         if (profile) {
           await ATSPlaywrightWorker.prepareApplication(userId, job, profile);
           app = db.applications.find(
-            a => (a.id === targetId || a.jobPostingId === job.sourceJobId || a.jobPostingId === job.id) && a.userId === userId
+            a => (a.id === targetId || a.jobPostingId === job.sourceJobId || a.jobPostingId === job.id)
           ) || db.applications[0];
         }
       }
@@ -45,7 +50,7 @@ export async function GET(
 
     const job = db.jobPostings.find(j => j.id === app.jobPostingId || j.sourceJobId === app.jobPostingId) || db.jobPostings[0];
     const resume = db.resumes.find(r => r.id === app.tailoredResumeId);
-    const match = db.matches.find(m => m.jobPostingId === app.jobPostingId && m.userId === userId);
+    const match = db.matches.find(m => m.jobPostingId === app.jobPostingId);
 
     return NextResponse.json({
       success: true,

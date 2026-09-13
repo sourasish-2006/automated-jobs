@@ -89,7 +89,7 @@ export default function ResumeStudioPage() {
         <div className="glass-panel p-12 rounded-2xl text-center space-y-3">
           <FileText className="w-10 h-10 text-slate-500 mx-auto" />
           <h3 className="text-base font-semibold text-white">No tailored resumes generated yet</h3>
-          <p className="text-xs text-slate-400">Select any discovered job and click "Tailor Resume & Apply".</p>
+          <p className="text-xs text-slate-400">Select any discovered job and click &quot;Tailor Resume &amp; Apply&quot;.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

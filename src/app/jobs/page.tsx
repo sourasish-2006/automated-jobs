@@ -255,7 +255,7 @@ export default function JobsExplorerPage() {
             <Compass className="w-10 h-10 text-slate-500 mx-auto" />
             <h3 className="text-base font-semibold text-white">No opportunities matched your current criteria</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Try selecting "All Sources", clearing keyword filters, or running a sync across all connectors.
+              Try selecting &quot;All Sources&quot;, clearing keyword filters, or running a sync across all connectors.
             </p>
           </div>
         ) : (

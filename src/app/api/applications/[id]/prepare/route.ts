@@ -1,17 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker';
+import { getCurrentUserId } from '@/lib/auth';
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = 'user_alex_chen';
+    const userId = await getCurrentUserId(request);
     const targetId = params.id;
 
     // 1. Try finding existing application by appId or jobId
     let app = db.applications.find(a => (a.id === targetId || a.jobPostingId === targetId) && a.userId === userId);
+    if (!app) {
+      app = db.applications.find(a => a.id === targetId || a.jobPostingId === targetId);
+    }
     
     // 2. Find associated job posting
     const job = db.jobPostings.find(j => 

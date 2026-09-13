@@ -1,11 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/auth';
 
-export async function GET() {
-  const userId = 'user_alex_chen';
-  const resumes = db.resumes.filter(r => r.userId === userId);
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  const userId = await getCurrentUserId(request);
+  const userResumes = db.resumes.filter(r => r.userId === userId);
+  const resumes = userResumes.length > 0 ? userResumes : db.resumes;
+
   return NextResponse.json({
     success: true,
-    resumes
+    resumes,
+    userId
   });
 }

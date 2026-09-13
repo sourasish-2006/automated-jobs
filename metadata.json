@@ -1,0 +1,8 @@
+{
+  "name": "AutoApply AI",
+  "description": "Autonomous career operating system for multi-source job ingestion, ATS resume tailoring, truthfulness validation, and human-in-the-loop application automation with OAuth authentication.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

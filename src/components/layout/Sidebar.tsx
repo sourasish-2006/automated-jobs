@@ -11,12 +11,12 @@ import {
   UserCircle2,
   Sliders,
   ShieldCheck,
-  Zap,
   Building2,
-  Sparkles,
   Bot,
-  Upload
+  Upload,
+  KeyRound
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 const navItems = [
   { label: 'Overview', href: '/', icon: LayoutDashboard },
@@ -30,6 +30,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, openLoginModal } = useAuth();
 
   return (
     <aside className="w-64 glass-panel border-r border-slate-800/80 min-h-screen flex flex-col justify-between shrink-0 p-4 sticky top-0 hidden md:flex">
@@ -71,22 +72,39 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Footer / Tenant & System Health */}
+      {/* Footer / Tenant & OAuth Security */}
       <div className="space-y-3 pt-4 border-t border-slate-800/80">
-        <div className="px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-slate-400" />
-            <div>
-              <p className="text-xs font-semibold text-white truncate max-w-[120px]">HyperScale AI</p>
-              <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Tenant Isolated
-              </p>
+        {user ? (
+          <div className="px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{user.name}</p>
+                <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>OAuth Verified</span>
+                </p>
+              </div>
             </div>
+            <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 shrink-0">
+              {user.role || 'CANDIDATE'}
+            </span>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">
-            PRO
-          </span>
-        </div>
+        ) : (
+          <button
+            onClick={openLoginModal}
+            className="w-full px-3 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-indigo-500/30 hover:border-indigo-500/60 flex items-center justify-between text-left transition-all group"
+          >
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-indigo-400" />
+              <div>
+                <p className="text-xs font-semibold text-white">OAuth Sign-In</p>
+                <p className="text-[10px] text-slate-400">Connect Google / GitHub</p>
+              </div>
+            </div>
+            <span className="text-xs text-indigo-400 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+          </button>
+        )}
 
         <div className="p-3 rounded-xl bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-indigo-500/20 text-center">
           <div className="flex items-center justify-center gap-1.5 text-xs text-indigo-300 font-semibold mb-1">

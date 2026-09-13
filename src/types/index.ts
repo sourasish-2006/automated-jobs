@@ -217,3 +217,24 @@ export interface ApplicationFormField {
   options?: string[];
   validationError?: string;
 }
+
+export type OAuthProvider = 'google' | 'github' | 'demo';
+
+export interface AuthUser {
+  id: string;
+  tenantId: string;
+  email: string;
+  name: string;
+  role: string;
+  avatarUrl?: string;
+  provider?: OAuthProvider;
+  providerId?: string;
+  createdAt?: string;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+  expiresAt: number;
+}
+
