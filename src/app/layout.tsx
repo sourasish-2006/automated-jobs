@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/lib/firebase/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export const metadata: Metadata = {
   title: 'NEXUS Studio — Strategy, Design & Engineering',
@@ -20,7 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-ink-950 font-body text-mist-100 overflow-x-hidden antialiased selection:bg-signal selection:text-ink-950">
-        {children}
+        <AuthProvider>
+          {children}
+          <AuthModal />
+        </AuthProvider>
       </body>
     </html>
   );
