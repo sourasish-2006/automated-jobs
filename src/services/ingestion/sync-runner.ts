@@ -11,8 +11,8 @@ import { IndeedAdapter } from './indeed';
 import { LinkedInAdapter } from './linkedin';
 import { CareerPagesAdapter } from './career-pages';
 import { JobDeduplicator } from './deduplicator';
-import { db, StoredJobPosting } from '@/lib/db';
-import { JobPlatform, NormalizedJobPosting } from '@/types';
+import { db, StoredJobPosting } from '../../lib/db';
+import { JobPlatform, NormalizedJobPosting } from '../../types';
 
 export class IngestionService {
   private adapters: Map<JobPlatform, JobSourceAdapter> = new Map();

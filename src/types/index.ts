@@ -130,6 +130,7 @@ export interface NormalizedJobPosting {
   sourcePlatform: JobPlatform;
   sourceJobId: string;
   sourceUrl: string;
+  canonicalUrl?: string;
   applicationUrl?: string;
   applicationMethod?: ApplicationMethod;
   foundOnSources?: JobPlatform[];

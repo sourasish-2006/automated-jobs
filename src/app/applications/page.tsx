@@ -17,6 +17,7 @@ import {
   Eye
 } from 'lucide-react';
 import { ApplicationStatus } from '@/types';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 const STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
   { status: 'MATCHED', label: 'Matched & Analyzed', color: 'border-indigo-500/40 text-indigo-400' },
@@ -27,12 +28,19 @@ const STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
 ];
 
 export default function ApplicationsPipelinePage() {
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchApps = async () => {
     try {
-      const res = await fetch('/api/applications');
+      const res = await fetch('/api/applications', {
+        headers: {
+          'x-user-id': activeUserId
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setApplications(data.applications);
@@ -46,7 +54,7 @@ export default function ApplicationsPipelinePage() {
 
   useEffect(() => {
     fetchApps();
-  }, []);
+  }, [activeUserId]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

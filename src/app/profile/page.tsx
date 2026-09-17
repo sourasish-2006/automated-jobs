@@ -28,10 +28,12 @@ import {
   KeyRound
 } from 'lucide-react';
 import { CandidateProfileData } from '@/types';
-import { useAuth } from '@/components/auth/AuthContext';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 export default function CandidateProfilePage() {
-  const { user, openLoginModal } = useAuth();
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [profile, setProfile] = useState<CandidateProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,9 +50,10 @@ export default function CandidateProfilePage() {
 
   const fetchProfileAndJobs = async () => {
     try {
+      const headers = { 'x-user-id': activeUserId };
       const [profRes, jobsRes] = await Promise.all([
-        fetch('/api/profile'),
-        fetch('/api/jobs')
+        fetch('/api/profile', { headers }),
+        fetch('/api/jobs', { headers })
       ]);
       const profData = await profRes.json();
       const jobsData = await jobsRes.json();
@@ -70,11 +73,8 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     fetchProfileAndJobs();
-  }, []);
+  }, [activeUserId]);
 
-  /**
-   * Automatically extracts and updates profile immediately upon file drop or selection
-   */
   const handleAutoExtractFile = async (uploadedFile: File) => {
     setIsExtracting(true);
     setSyncFeedback({
@@ -85,30 +85,30 @@ export default function CandidateProfilePage() {
     try {
       let res;
       if (uploadedFile.name.endsWith('.docx') || uploadedFile.name.endsWith('.pdf')) {
-        // Send multipart form-data for native docx/pdf extraction
         const formData = new FormData();
         formData.append('file', uploadedFile);
+        formData.append('userId', activeUserId);
         res = await fetch('/api/profile/extract-resume', {
           method: 'POST',
+          headers: { 'x-user-id': activeUserId },
           body: formData
         });
       } else {
-        // Text / Markdown / JSON
         const text = await uploadedFile.text();
         res = await fetch('/api/profile/extract-resume', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': activeUserId
+          },
+          body: JSON.stringify({ text, userId: activeUserId })
         });
       }
 
       const data = await res.json();
 
       if (data.success && data.data?.profile) {
-        // 1. Immediately update UI state with extracted profile
         setProfile(data.data.profile);
-
-        // 2. Immediately update job recommendations
         if (data.data.recommendations) {
           setRecommendedJobs(data.data.recommendations.slice(0, 3));
         }
@@ -158,14 +158,18 @@ export default function CandidateProfilePage() {
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': activeUserId
+        },
+        body: JSON.stringify({ ...profile, userId: activeUserId })
       });
       const data = await res.json();
       if (data.success) {
         setSaveSuccess(true);
-        // Refresh matching jobs with updated profile
-        const jobsRes = await fetch('/api/jobs');
+        const jobsRes = await fetch('/api/jobs', {
+          headers: { 'x-user-id': activeUserId }
+        });
         const jobsData = await jobsRes.json();
         if (jobsData.success) {
           setRecommendedJobs(jobsData.jobs.slice(0, 3));
@@ -259,38 +263,6 @@ export default function CandidateProfilePage() {
           </div>
         </div>
       )}
-
-      {/* Connected OAuth Identity Status */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-            <KeyRound className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white">OAuth Authentication Identity:</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${
-                user ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {user ? `${user.provider ? user.provider.toUpperCase() : 'OAUTH'} CONNECTED` : 'LOCAL DEV PROFILE'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              {user ? `Authenticated as ${user.name} (${user.email})` : 'Sign in with Google or GitHub OAuth to sync with your external identity.'}
-            </p>
-          </div>
-        </div>
-
-        {!user && (
-          <button
-            onClick={openLoginModal}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all self-start sm:self-auto"
-          >
-            <span>Connect OAuth Account</span>
-            <span>&rarr;</span>
-          </button>
-        )}
-      </div>
 
       {/* TOP SECTION: Automatic Resume Ingestion Dropzone */}
       <div
@@ -392,14 +364,13 @@ export default function CandidateProfilePage() {
         </div>
       )}
 
-      {/* Candidate Profile Details Form (Auto-populated from resume) */}
+      {/* Candidate Profile Details Form */}
       <form onSubmit={handleSave} className="space-y-6 text-xs">
-        {/* Personal Details */}
         <div className="glass-panel p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <UserCircle2 className="w-4 h-4 text-indigo-400" />
-              <span>Personal Information (Extracted from Resume)</span>
+              <span>Personal Information</span>
             </h2>
             <span className="text-[10px] text-slate-400">Auto-filled from resume</span>
           </div>
@@ -489,7 +460,7 @@ export default function CandidateProfilePage() {
           </div>
         </div>
 
-        {/* Job Search Preferences & Indian Market Options */}
+        {/* Job Search Preferences */}
         <div className="glass-panel p-6 rounded-2xl space-y-4">
           <h2 className="text-sm font-bold text-white flex items-center gap-2 pb-3 border-b border-slate-800">
             <Sliders className="w-4 h-4 text-cyan-400" />

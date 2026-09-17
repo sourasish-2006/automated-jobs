@@ -15,7 +15,12 @@ import {
   Check
 } from 'lucide-react';
 
+import { useAuth } from '@/lib/firebase/AuthContext';
+
 export default function ResumeStudioPage() {
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [resumes, setResumes] = useState<any[]>([]);
   const [selectedResume, setSelectedResume] = useState<any>(null);
   const [candidateProfile, setCandidateProfile] = useState<any>(null);
@@ -23,9 +28,10 @@ export default function ResumeStudioPage() {
 
   const fetchResumes = async () => {
     try {
+      const headers = { 'x-user-id': activeUserId };
       const [res, profRes] = await Promise.all([
-        fetch('/api/resumes'),
-        fetch('/api/profile')
+        fetch('/api/resumes', { headers }),
+        fetch('/api/profile', { headers })
       ]);
       const data = await res.json();
       const profData = await profRes.json();
@@ -47,7 +53,7 @@ export default function ResumeStudioPage() {
 
   useEffect(() => {
     fetchResumes();
-  }, []);
+  }, [activeUserId]);
 
   const handlePrint = () => {
     window.print();
@@ -147,10 +153,20 @@ export default function ResumeStudioPage() {
               <div className="space-y-6">
                 {/* Header */}
                 <div className="text-center pb-4 border-b border-slate-800 space-y-1.5">
-                  <h1 className="text-2xl font-bold text-white tracking-tight">{candidateProfile?.fullName || 'Raihan Molla'}</h1>
-                  <p className="text-xs text-indigo-400 font-medium">{selectedResume.content.targetRole}</p>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">
+                    {candidateProfile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Candidate Resume'}
+                  </h1>
+                  <p className="text-xs text-indigo-400 font-medium">
+                    {selectedResume.content?.targetRole || candidateProfile?.desiredTitles?.[0] || 'Software Engineer'}
+                  </p>
                   <p className="text-xs text-slate-400">
-                    {candidateProfile?.location || 'Kolkata, West Bengal, India'} • {candidateProfile?.email || 'raihanmolla9903@gmail.com'} • {candidateProfile?.phone || '8585844758'} • {candidateProfile?.linkedinUrl || 'https://linkedin.com/in/raihan-molla'} • {candidateProfile?.githubUrl || 'https://github.com/raihan-codes'}
+                    {[
+                      candidateProfile?.location,
+                      candidateProfile?.email || user?.email,
+                      candidateProfile?.phone,
+                      candidateProfile?.linkedinUrl,
+                      candidateProfile?.githubUrl
+                    ].filter(Boolean).join(' • ')}
                   </p>
                 </div>
 

@@ -2,47 +2,65 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { CandidateProfileData } from '@/types';
 import { FormPrefillEngine } from '@/services/automation/form-prefill';
-import { getCurrentUserId, getSessionUser } from '@/lib/auth';
+import { saveProfileToFirestore, getProfileFromFirestore } from '@/lib/firebase/firestore';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
-  const userId = await getCurrentUserId(request);
+  const { searchParams } = new URL(request.url);
+  const headerUserId = request.headers.get('x-user-id');
+  const paramUserId = searchParams.get('userId');
+  const userId = paramUserId || headerUserId || 'user_raihan_molla';
+
   let profile = db.profiles.get(userId);
-
   if (!profile) {
-    // If authenticated user doesn't have a profile yet, initialize one
-    const user = await getSessionUser(request);
-    const baseProfile = db.profiles.get('user_alex_chen');
-
-    if (baseProfile) {
-      profile = {
-        ...baseProfile,
-        id: `prof_${userId}`,
-        userId,
-        fullName: user?.name || baseProfile.fullName,
-        email: user?.email || baseProfile.email
-      };
+    profile = await getProfileFromFirestore(userId).catch(() => null) || undefined;
+    if (profile) {
       db.profiles.set(userId, profile);
-    } else {
-      return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 });
     }
+  }
+
+  // If user doesn't have an uploaded profile yet, return an empty template profile with their userId
+  if (!profile) {
+    profile = {
+      id: `prof_${userId}`,
+      userId,
+      fullName: '',
+      email: '',
+      desiredTitles: [],
+      preferredLocations: [],
+      remotePreference: 'ANY',
+      requiresVisa: false,
+      yearsOfExperience: 0,
+      skills: [],
+      experiences: [],
+      educations: [],
+      projects: []
+    };
+    db.profiles.set(userId, profile);
   }
 
   return NextResponse.json({
     success: true,
-    profile,
-    userId
+    userId,
+    hasUploadedResume: Boolean(profile.skills && profile.skills.length > 0),
+    profile
   });
 }
 
 export async function PUT(request: NextRequest) {
-  const userId = await getCurrentUserId(request);
+  const { searchParams } = new URL(request.url);
+  const headerUserId = request.headers.get('x-user-id');
+  const paramUserId = searchParams.get('userId');
+
   try {
     const updatedProfile: CandidateProfileData = await request.json();
+    const userId = updatedProfile.userId || paramUserId || headerUserId || 'user_raihan_molla';
     updatedProfile.userId = userId;
+
     db.profiles.set(userId, updatedProfile);
+    await saveProfileToFirestore(userId, updatedProfile).catch(err => console.warn('Firestore PUT err:', err));
 
     // Keep application form fields in sync with updated profile
     for (const app of db.applications.filter(a => a.userId === userId)) {
@@ -62,6 +80,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      userId,
       profile: updatedProfile
     });
   } catch (error: any) {

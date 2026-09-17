@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/firebase/AuthContext';
 import {
   LayoutDashboard,
   Compass,
@@ -14,9 +15,10 @@ import {
   Building2,
   Bot,
   Upload,
-  KeyRound
+  UserCheck,
+  RefreshCw,
+  Target
 } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthContext';
 
 const navItems = [
   { label: 'Overview', href: '/', icon: LayoutDashboard },
@@ -24,13 +26,14 @@ const navItems = [
   { label: 'Job Discovery & Match', href: '/jobs', icon: Compass },
   { label: 'Application Pipeline', href: '/applications', icon: FileCheck2 },
   { label: 'Resume Studio', href: '/resumes', icon: FileText },
+  { label: 'Resume Review & Jobs', href: '/resumes/review', icon: Target },
   { label: 'Candidate Profile', href: '/profile', icon: UserCircle2 },
   { label: 'Automation & Sources', href: '/settings', icon: Sliders },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, openLoginModal } = useAuth();
+  const { user, openAuthModal, isFirebaseLive } = useAuth();
 
   return (
     <aside className="w-64 glass-panel border-r border-slate-800/80 min-h-screen flex flex-col justify-between shrink-0 p-4 sticky top-0 hidden md:flex">
@@ -72,44 +75,33 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Footer / Tenant & OAuth Security */}
+      {/* Footer / User Vault & Tenant */}
       <div className="space-y-3 pt-4 border-t border-slate-800/80">
-        {user ? (
-          <div className="px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-                <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>OAuth Verified</span>
-                </p>
-              </div>
+        <button
+          onClick={() => openAuthModal('SIGNIN')}
+          className="w-full px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 transition-all flex items-center justify-between text-left group"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs">
+              {user?.displayName ? user.displayName.charAt(0) : 'U'}
             </div>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 shrink-0">
-              {user.role || 'CANDIDATE'}
-            </span>
+            <div>
+              <p className="text-xs font-semibold text-white truncate max-w-[110px]">
+                {user?.displayName || 'Sign In'}
+              </p>
+              <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>{isFirebaseLive ? 'Firebase DB' : 'Custom Vault'}</span>
+              </p>
+            </div>
           </div>
-        ) : (
-          <button
-            onClick={openLoginModal}
-            className="w-full px-3 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-indigo-500/30 hover:border-indigo-500/60 flex items-center justify-between text-left transition-all group"
-          >
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-indigo-400" />
-              <div>
-                <p className="text-xs font-semibold text-white">OAuth Sign-In</p>
-                <p className="text-[10px] text-slate-400">Connect Google / GitHub</p>
-              </div>
-            </div>
-            <span className="text-xs text-indigo-400 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
-          </button>
-        )}
+          <RefreshCw className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+        </button>
 
         <div className="p-3 rounded-xl bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-indigo-500/20 text-center">
           <div className="flex items-center justify-center gap-1.5 text-xs text-indigo-300 font-semibold mb-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Zero-Hallucination Verified</span>
+            <span>Zero-Hallucination Match</span>
           </div>
           <p className="text-[10px] text-slate-400">Strict human approval safety gates enabled.</p>
         </div>
