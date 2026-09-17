@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 import { AuthProvider } from '@/components/auth/AuthContext';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { PageTransition } from '@/components/ui/PageTransition';
 
 export const metadata: Metadata = {
   title: 'AutoApply AI - Intelligent Career Operating System',
@@ -26,10 +27,12 @@ export default function RootLayout({
       <body className="bg-[#090d16] text-slate-100 min-h-screen flex antialiased selection:bg-indigo-500 selection:text-white">
         <AuthProvider>
           <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <Navbar />
-            <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-              {children}
+            <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto relative overflow-y-auto">
+              <PageTransition>
+                {children}
+              </PageTransition>
             </main>
           </div>
           <AuthModal />

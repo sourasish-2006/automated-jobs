@@ -14,18 +14,20 @@ export function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/api/profile')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.profile) {
-          if (data.profile.fullName) setProfileName(data.profile.fullName);
-          if (data.profile.headline) {
-            const role = data.profile.headline.split('—')[0] || data.profile.headline.split('|')[0];
-            setProfileRole(role.trim() || 'Software Engineer');
+    if (user) {
+      fetch('/api/profile')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.profile) {
+            if (data.profile.fullName) setProfileName(data.profile.fullName);
+            if (data.profile.headline) {
+              const role = data.profile.headline.split('—')[0] || data.profile.headline.split('|')[0];
+              setProfileRole(role.trim() || 'Software Engineer');
+            }
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    }
   }, [user]);
 
   // Close dropdown on outside click

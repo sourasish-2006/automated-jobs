@@ -47,6 +47,10 @@ export default function CandidateProfilePage() {
   const [newSkillCategory, setNewSkillCategory] = useState<'TECHNICAL' | 'FRAMEWORK' | 'TOOL' | 'SOFT'>('TECHNICAL');
 
   const fetchProfileAndJobs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const [profRes, jobsRes] = await Promise.all([
         fetch('/api/profile'),
@@ -70,7 +74,7 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     fetchProfileAndJobs();
-  }, []);
+  }, [user]);
 
   /**
    * Automatically extracts and updates profile immediately upon file drop or selection

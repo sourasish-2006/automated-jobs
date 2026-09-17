@@ -16,6 +16,7 @@ import {
   Send,
   Eye
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 import { ApplicationStatus } from '@/types';
 
 const STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
@@ -30,7 +31,13 @@ export default function ApplicationsPipelinePage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { user } = useAuth();
+
   const fetchApps = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/applications');
       const data = await res.json();
@@ -46,7 +53,7 @@ export default function ApplicationsPipelinePage() {
 
   useEffect(() => {
     fetchApps();
-  }, []);
+  }, [user]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

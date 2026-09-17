@@ -9,25 +9,14 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   const userId = await getCurrentUserId(request);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   let profile = db.profiles.get(userId);
 
   if (!profile) {
-    // If authenticated user doesn't have a profile yet, initialize one
-    const user = await getSessionUser(request);
-    const baseProfile = db.profiles.get('user_alex_chen');
-
-    if (baseProfile) {
-      profile = {
-        ...baseProfile,
-        id: `prof_${userId}`,
-        userId,
-        fullName: user?.name || baseProfile.fullName,
-        email: user?.email || baseProfile.email
-      };
-      db.profiles.set(userId, profile);
-    } else {
-      return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 });
-    }
+    return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -39,6 +28,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const userId = await getCurrentUserId(request);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const updatedProfile: CandidateProfileData = await request.json();
     updatedProfile.userId = userId;

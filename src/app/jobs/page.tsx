@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 const ALL_PLATFORMS = [
   { id: 'ALL', label: 'All Sources (Global Aggregation)' },
@@ -55,7 +56,13 @@ export default function JobsExplorerPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
+  const { user } = useAuth();
+
   const fetchJobs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -79,7 +86,7 @@ export default function JobsExplorerPage() {
 
   useEffect(() => {
     fetchJobs();
-  }, [selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore]);
+  }, [user, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

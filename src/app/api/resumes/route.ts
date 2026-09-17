@@ -6,8 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const userId = await getCurrentUserId(request);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   const userResumes = db.resumes.filter(r => r.userId === userId);
-  const resumes = userResumes.length > 0 ? userResumes : db.resumes;
+  const resumes = userResumes;
 
   return NextResponse.json({
     success: true,
