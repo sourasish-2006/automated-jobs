@@ -197,16 +197,16 @@ IIT Roorkee — B.Tech in Computer Science (2016 - 2020, CGPA: 8.9)`;
 
   const { ProfileExtractor } = await import('../src/services/ai/profile-extractor');
   const extractResult = await ProfileExtractor.extractProfileFromText(sampleResume);
-  const p = extractResult.profile;
+  const p = extractResult.profile as CandidateProfileData;
 
-  assert(p.fullName.toUpperCase() === 'ROHAN SHARMA', 'Extracts candidate full name');
+  assert((p.fullName || '').toUpperCase() === 'ROHAN SHARMA', 'Extracts candidate full name');
   assert(p.email === 'rohan.sharma@example.com', 'Extracts candidate email');
-  assert(p.phone?.includes('98765'), 'Extracts candidate phone');
-  assert(p.linkedinUrl?.includes('linkedin.com/in/rohansharma-swe'), 'Extracts LinkedIn profile URL');
-  assert(p.githubUrl?.includes('github.com/rohansharma-swe'), 'Extracts GitHub profile URL');
-  assert(p.skills.some(s => s.name === 'TypeScript') && p.skills.some(s => s.name === 'React'), 'Extracts technical skills');
+  assert(Boolean(p.phone?.includes('98765')), 'Extracts candidate phone');
+  assert(Boolean(p.linkedinUrl?.includes('linkedin.com/in/rohansharma-swe')), 'Extracts LinkedIn profile URL');
+  assert(Boolean(p.githubUrl?.includes('github.com/rohansharma-swe')), 'Extracts GitHub profile URL');
+  assert((p.skills || []).some(s => s.name === 'TypeScript') && (p.skills || []).some(s => s.name === 'React'), 'Extracts technical skills');
   assert(p.expectedSalaryLPA === 34, 'Extracts Sensitive Field: Expected Salary / CTC (34 LPA)');
-  assert(p.workAuthorization?.includes('Indian Citizen'), 'Extracts Sensitive Field: Work Authorization status');
+  assert(Boolean(p.workAuthorization?.includes('Indian Citizen')), 'Extracts Sensitive Field: Work Authorization status');
   assert(p.requiresVisa === false, 'Extracts Sensitive Field: Visa requirement flag');
 
   // Verify form prefill with extracted profile
@@ -232,15 +232,15 @@ TECHNICAL SKILLS
 TypeScript, React, Node.js, Next.js, PostgreSQL, Redis, Docker, Go, Kubernetes`;
 
   const raihanResult = await ProfileExtractor.extractProfileFromText(raihanResume);
-  const rp = raihanResult.profile;
+  const rp = raihanResult.profile as CandidateProfileData;
 
   assert(rp.fullName === 'Raihan Molla', 'Accurately extracts "Raihan Molla" without capturing portfolio URL as name');
-  assert(rp.location.includes('Kolkata'), 'Accurately extracts Kolkata, West Bengal location');
+  assert(Boolean(rp.location?.includes('Kolkata')), 'Accurately extracts Kolkata, West Bengal location');
   assert(rp.email === 'raihanmolla9903@gmail.com', 'Accurately extracts raihanmolla9903@gmail.com');
   assert(rp.phone === '8585844758', 'Accurately extracts 8585844758');
   assert(rp.website === 'https://myportfolio.vercel.app', 'Accurately extracts portfolio website https://myportfolio.vercel.app');
-  assert(rp.linkedinUrl?.includes('linkedin.com/in/raihan-molla'), 'Accurately extracts LinkedIn');
-  assert(rp.githubUrl?.includes('github.com/raihan-codes'), 'Accurately extracts GitHub');
+  assert(Boolean(rp.linkedinUrl?.includes('linkedin.com/in/raihan-molla')), 'Accurately extracts LinkedIn');
+  assert(Boolean(rp.githubUrl?.includes('github.com/raihan-codes')), 'Accurately extracts GitHub');
   assert(!rp.fullName.toLowerCase().includes('portfolio'), 'Full Name does not contain "portfolio" keyword');
 
   // 9. Multi-Country & Global Candidate Extraction Test (US / UK / Europe / Remote)
@@ -259,12 +259,12 @@ EDUCATION
 Imperial College London — M.Eng in Computing`;
 
   const globalResult = await ProfileExtractor.extractProfileFromText(globalResume);
-  const gp = globalResult.profile;
+  const gp = globalResult.profile as CandidateProfileData;
 
   assert(gp.fullName === 'Sarah Jenkins', 'Extracts international candidate full name');
   assert(gp.email === 'sarah.jenkins@example.co.uk', 'Extracts UK email domain (.co.uk)');
-  assert(gp.phone?.includes('7911'), 'Extracts UK phone number');
-  assert(gp.workAuthorization?.includes('UK Citizen'), 'Extracts UK work authorization');
+  assert(Boolean(gp.phone?.includes('7911')), 'Extracts UK phone number');
+  assert(Boolean(gp.workAuthorization?.includes('UK Citizen')), 'Extracts UK work authorization');
   assert(gp.minSalary === 165000, 'Extracts USD salary requirement for international roles');
 
   // 10. Test for Institutional Noise Filtering & ATS Form Auto-Fill
@@ -281,7 +281,7 @@ SKILLS
 TypeScript, React, Node.js, Next.js, PostgreSQL, Redis, Docker, Go, Kubernetes`;
 
   const uniResult = await ProfileExtractor.extractProfileFromText(universityResume);
-  const up = uniResult.profile;
+  const up = uniResult.profile as CandidateProfileData;
 
   assert(up.fullName === 'Raihan Molla', 'Extracts candidate name "Raihan Molla" without capturing "Kazi Nazrul University Asansol"');
   assert(!up.fullName.toLowerCase().includes('university'), 'Full Name does not contain "university" keyword');
@@ -359,7 +359,7 @@ TypeScript, React, Node.js, Next.js, PostgreSQL, Redis, Docker, Go, Kubernetes`;
 
   const merged = JobDeduplicator.mergePostings(jobGreenhouse, jobLinkedIn);
   assert(
-    merged.foundOnSources?.includes('GREENHOUSE') && merged.foundOnSources?.includes('LINKEDIN'),
+    Boolean(merged.foundOnSources?.includes('GREENHOUSE') && merged.foundOnSources?.includes('LINKEDIN')),
     'Merged posting aggregates foundOnSources: ["GREENHOUSE", "LINKEDIN"]'
   );
   assert(merged.sourceUrl.includes('greenhouse.io'), 'Preserves direct ATS URL priority over social board');

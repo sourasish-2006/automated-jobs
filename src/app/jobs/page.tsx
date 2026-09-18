@@ -22,9 +22,12 @@ import {
   Briefcase,
   GraduationCap,
   ShieldCheck,
-  Zap
+  Zap,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthContext';
+
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 const ALL_PLATFORMS = [
   { id: 'ALL', label: 'All Sources (Global Aggregation)' },
@@ -41,8 +44,13 @@ const ALL_PLATFORMS = [
 ];
 
 export default function JobsExplorerPage() {
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [candidateName, setCandidateName] = useState<string>('Candidate');
+  const [hasCustomProfile, setHasCustomProfile] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL');
   const [selectedEmploymentType, setSelectedEmploymentType] = useState<string>('ALL');
@@ -72,10 +80,22 @@ export default function JobsExplorerPage() {
       if (remoteOnly) params.append('remote', 'true');
       if (minMatchScore > 0) params.append('minScore', String(minMatchScore));
 
-      const res = await fetch(`/api/jobs?${params.toString()}`);
+      const res = await fetch(`/api/jobs?${params.toString()}`, {
+        headers: {
+          'x-user-id': activeUserId
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setJobs(data.jobs);
+        setHasCustomProfile(Boolean(data.hasCustomProfile));
+        if (user?.displayName) {
+          setCandidateName(user.displayName);
+        } else if (data.hasCustomProfile && data.candidateName) {
+          setCandidateName(data.candidateName);
+        } else if (user?.email) {
+          setCandidateName(user.email.split('@')[0]);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -86,7 +106,7 @@ export default function JobsExplorerPage() {
 
   useEffect(() => {
     fetchJobs();
-  }, [user, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore]);
+  }, [selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +170,36 @@ export default function JobsExplorerPage() {
           <Plus className="w-4 h-4" />
           <span>Sync Connectors & Career Boards</span>
         </button>
+      </div>
+
+      {/* User Custom Matched Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-indigo-950/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <Sparkles className="w-5 h-5 text-cyan-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs font-bold text-white">
+                Personalized AI Recommendations for {candidateName}
+              </h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+                {hasCustomProfile ? 'Resume Match Active' : 'Default Profile'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Match scores & why-match explanations are dynamically calibrated against your uploaded resume in your Firebase Vault.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/upload"
+          className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 hover:text-white border border-slate-700 transition-colors whitespace-nowrap self-start sm:self-auto flex items-center gap-1.5"
+        >
+          <Upload className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Upload Resume to Re-score</span>
+        </Link>
       </div>
 
       {/* Search & Filters Bar */}

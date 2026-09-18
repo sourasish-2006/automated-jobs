@@ -6,11 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:firestore": "npx ts-node --compiler-options '{\"target\":\"es2022\",\"module\":\"commonjs\"}' scripts/seed-firestore.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.21.1",
+    "@radix-ui/react-accordion": "^1.2.20",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "clsx": "^2.1.1",
+    "firebase": "^12.18.0",
     "framer-motion": "^13.4.0",
     "lucide-react": "^0.453.0",
     "mammoth": "^1.12.1",
@@ -18,8 +24,10 @@
     "pdf-parse": "^2.4.5",
     "prisma": "^5.21.1",
     "react": "18.3.1",
+    "react-countup": "^6.5.3",
     "react-dom": "18.3.1",
-    "tailwind-merge": "^2.6.1",
+    "react-intersection-observer": "^11.0.1",
+    "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -32,6 +32,8 @@ import {
   CheckCircle
 } from 'lucide-react';
 
+import { useAuth } from '@/lib/firebase/AuthContext';
+
 const SAMPLE_RESUMES = [
   {
     title: 'Rohan Sharma (SDE-2 Full Stack & Backend — Bengaluru)',
@@ -96,6 +98,9 @@ const PIPELINE_STEPS = [
 
 export default function ResumeUploadPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [file, setFile] = useState<File | null>(null);
   const [rawText, setRawText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -161,12 +166,16 @@ export default function ResumeUploadPage() {
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('userId', activeUserId);
         
         setActivePipelineStep(3);
         setProcessingStatus('Step 3/7: Extracting raw textual tokens and layout stream...');
 
         res = await fetch('/api/profile/extract-resume', {
           method: 'POST',
+          headers: {
+            'x-user-id': activeUserId
+          },
           body: formData
         });
       } else {
@@ -174,8 +183,11 @@ export default function ResumeUploadPage() {
         setProcessingStatus('Step 3/7: Ingesting resume text stream into parser...');
         res = await fetch('/api/profile/extract-resume', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: rawText })
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': activeUserId
+          },
+          body: JSON.stringify({ text: rawText, userId: activeUserId })
         });
       }
 
@@ -222,7 +234,10 @@ export default function ResumeUploadPage() {
       try {
         const prepRes = await fetch(`/api/applications/${topJob.id || 'job_razorpay_1'}/prepare`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': activeUserId
+          }
         });
         const prepData = await prepRes.json();
         if (prepData.result?.id) {
@@ -253,6 +268,7 @@ export default function ResumeUploadPage() {
 
     const updatedProfile = {
       ...extractedData,
+      userId: activeUserId,
       fullName: editName,
       email: editEmail,
       phone: editPhone,
@@ -270,11 +286,16 @@ export default function ResumeUploadPage() {
     // Save and re-score
     await fetch('/api/profile', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': activeUserId
+      },
       body: JSON.stringify(updatedProfile)
     });
 
-    const jobsRes = await fetch('/api/jobs');
+    const jobsRes = await fetch('/api/jobs', {
+      headers: { 'x-user-id': activeUserId }
+    });
     const jobsData = await jobsRes.json();
     if (jobsData.success) {
       setRecommendations(jobsData.jobs);

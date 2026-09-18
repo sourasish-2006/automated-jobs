@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { ApplicationStatus } from '@/types';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 const STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
   { status: 'MATCHED', label: 'Matched & Analyzed', color: 'border-indigo-500/40 text-indigo-400' },
@@ -28,6 +29,9 @@ const STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
 ];
 
 export default function ApplicationsPipelinePage() {
+  const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
+
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +43,11 @@ export default function ApplicationsPipelinePage() {
       return;
     }
     try {
-      const res = await fetch('/api/applications');
+      const res = await fetch('/api/applications', {
+        headers: {
+          'x-user-id': activeUserId
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setApplications(data.applications);
@@ -53,7 +61,7 @@ export default function ApplicationsPipelinePage() {
 
   useEffect(() => {
     fetchApps();
-  }, [user]);
+  }, [activeUserId]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

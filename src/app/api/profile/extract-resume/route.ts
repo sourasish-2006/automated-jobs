@@ -5,13 +5,22 @@ import { FormPrefillEngine } from '@/services/automation/form-prefill';
 import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker';
 import { db } from '@/lib/db';
 import { CandidateProfileData } from '@/types';
+import {
+  saveProfileToFirestore,
+  saveUserMatchToFirestore,
+  saveResumeToFirestore,
+  saveNotificationToFirestore
+} from '@/lib/firebase/firestore';
 import mammoth from 'mammoth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
     const contentType = request.headers.get('content-type') || '';
+    const headerUserId = request.headers.get('x-user-id');
     let rawText = '';
-    let userId = 'user_alex_chen';
+    let userId = headerUserId || 'user_raihan_molla';
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
@@ -54,14 +63,19 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 1. Extract structured profile from resume text
+    // 1. Extract structured profile from resume text using semantic AI extractor
     const result = await ProfileExtractor.extractProfileFromText(rawText);
-    const extractedProfile = result.profile as CandidateProfileData;
+    const extractedProfile = {
+      ...result.profile,
+      userId,
+      id: `prof_${userId}`
+    } as CandidateProfileData;
 
-    // 2. Save directly to Candidate Profile store
+    // 2. Save directly to runtime store & Cloud Firestore
     db.profiles.set(userId, extractedProfile);
+    await saveProfileToFirestore(userId, extractedProfile).catch(err => console.warn('Firestore profile save err:', err));
 
-    // 3. Immediately re-calculate Match Affinities for all active job postings
+    // 3. Immediately calculate custom Match Affinities for this user against all active job postings
     const updatedRecommendations = [];
     for (const job of db.jobPostings) {
       const matchResult = await JobMatcher.analyzeMatch(extractedProfile, job);
@@ -83,6 +97,10 @@ export async function POST(request: Request) {
         db.matches.push(matchRecord);
       }
 
+      // Persist user match score to Firestore
+      await saveUserMatchToFirestore(userId, job.id, matchResult, matchRecord.isStarred)
+        .catch(err => console.warn('Firestore match save err:', err));
+
       updatedRecommendations.push({
         ...job,
         matchScore: matchResult.overallScore,
@@ -90,16 +108,16 @@ export async function POST(request: Request) {
       });
     }
 
-    // Sort by match score descending
+    // Sort opportunities by match score descending (highest match fit first)
     updatedRecommendations.sort((a, b) => b.matchScore - a.matchScore);
 
-    // 4. Automatically update all existing application form fields with extracted profile data
+    // 4. Automatically update all existing application form fields for this user
     for (const app of db.applications.filter(a => a.userId === userId)) {
       app.fields = FormPrefillEngine.mapProfileToFields(extractedProfile);
     }
 
     // 5. Pre-fill application for top matching job
-    let topAppId = db.applications[0]?.id || 'app_figma_1';
+    let topAppId = `app_${updatedRecommendations[0]?.id || 'figma'}_${userId}`;
     if (updatedRecommendations.length > 0) {
       const topJob = updatedRecommendations[0];
       const prepResult = await ATSPlaywrightWorker.prepareApplication(
@@ -112,6 +130,57 @@ export async function POST(request: Request) {
       }
     }
 
+    // Save initial master resume entry for user in Firestore
+    const masterResumeRecord = {
+      id: `resume_master_${userId}`,
+      userId,
+      targetRole: extractedProfile.desiredTitles[0] || 'Software Engineer',
+      company: 'Master Vault',
+      content: {
+        candidateName: extractedProfile.fullName,
+        email: extractedProfile.email,
+        phone: extractedProfile.phone || '',
+        location: extractedProfile.location || '',
+        summary: extractedProfile.summary || '',
+        skills: extractedProfile.skills.map(s => s.name),
+        experiences: extractedProfile.experiences.map(e => ({
+          role: e.role,
+          company: e.company,
+          duration: `${e.startDate} - ${e.endDate || 'Present'}`,
+          bullets: e.bullets
+        })),
+        educations: extractedProfile.educations.map(ed => ({
+          institution: ed.institution,
+          degree: ed.degree,
+          year: `${ed.startYear || ''} - ${ed.endYear || ''}`,
+          gpa: ed.gpa
+        })),
+        projects: extractedProfile.projects.map(p => ({
+          name: p.title,
+          technologies: p.technologies,
+          bullets: p.bullets
+        }))
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    db.resumes.push(masterResumeRecord as any);
+    await saveResumeToFirestore(userId, masterResumeRecord).catch(() => {});
+
+    // Save welcome notification in Firestore
+    const welcomeNotif = {
+      id: `notif_welcome_${Date.now()}_${userId}`,
+      userId,
+      type: 'PROFILE_UPDATED',
+      title: 'Resume Processed & Profile Isolated in Firestore',
+      message: `Parsed ${result.extractedSkillsCount} verified technical skills. Scored and ranked ${updatedRecommendations.length} active tech jobs specifically for your background.`,
+      actionUrl: '/jobs',
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
+    db.notifications.unshift(welcomeNotif as any);
+    await saveNotificationToFirestore(userId, welcomeNotif).catch(() => {});
+
     // 6. Record Audit Log
     db.auditLogs.unshift({
       id: `audit_${Date.now()}`,
@@ -121,6 +190,8 @@ export async function POST(request: Request) {
       resourceType: 'CandidateProfile',
       resourceId: `prof_${userId}`,
       details: {
+        userId,
+        fullName: extractedProfile.fullName,
         extractedSkillsCount: result.extractedSkillsCount,
         extractedRolesCount: result.extractedRolesCount,
         isLowConfidence: result.isLowConfidence,
@@ -135,6 +206,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
+        userId,
         profile: extractedProfile,
         recommendations: updatedRecommendations,
         topAppId,
